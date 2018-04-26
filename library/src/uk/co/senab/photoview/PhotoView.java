@@ -51,6 +51,11 @@ public class PhotoView extends ImageView implements IPhotoView {
             mPendingScaleType = null;
         }
     }
+    
+    public boolean canAccept(int dx) {
+    	
+    	return mAttacher.canScroll(dx);
+    }
 
     @Override
     public void setPhotoViewRotation(float rotationDegree) {
@@ -145,6 +150,12 @@ public class PhotoView extends ImageView implements IPhotoView {
     @Override
     public void setMediumScale(float mediumScale) {
         mAttacher.setMediumScale(mediumScale);
+    }
+    
+    @Override
+	public void setMediumScaleEnabled(boolean enabled)
+    {
+    	mAttacher.setMediumScaleEnabled(enabled);
     }
 
     @Override

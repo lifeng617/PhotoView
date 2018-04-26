@@ -15,6 +15,16 @@
  *******************************************************************************/
 package uk.co.senab.photoview;
 
+import static android.view.MotionEvent.ACTION_CANCEL;
+import static android.view.MotionEvent.ACTION_DOWN;
+import static android.view.MotionEvent.ACTION_UP;
+
+import java.lang.ref.WeakReference;
+
+import uk.co.senab.photoview.gestures.OnGestureListener;
+import uk.co.senab.photoview.gestures.VersionedGestureDetector;
+import uk.co.senab.photoview.log.LogManager;
+import uk.co.senab.photoview.scrollerproxy.ScrollerProxy;
 import android.content.Context;
 import android.graphics.Matrix;
 import android.graphics.Matrix.ScaleToFit;
@@ -32,17 +42,6 @@ import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Interpolator;
 import android.widget.ImageView;
 import android.widget.ImageView.ScaleType;
-
-import java.lang.ref.WeakReference;
-
-import uk.co.senab.photoview.gestures.OnGestureListener;
-import uk.co.senab.photoview.gestures.VersionedGestureDetector;
-import uk.co.senab.photoview.log.LogManager;
-import uk.co.senab.photoview.scrollerproxy.ScrollerProxy;
-
-import static android.view.MotionEvent.ACTION_CANCEL;
-import static android.view.MotionEvent.ACTION_DOWN;
-import static android.view.MotionEvent.ACTION_UP;
 
 public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
         OnGestureListener,
@@ -67,6 +66,8 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     public static final float DEFAULT_MID_SCALE = 1.75f;
     public static final float DEFAULT_MIN_SCALE = 1.0f;
 
+    private boolean mMidScaleEnabled = true;
+    
     private float mMinScale = DEFAULT_MIN_SCALE;
     private float mMidScale = DEFAULT_MID_SCALE;
     private float mMaxScale = DEFAULT_MAX_SCALE;
@@ -302,6 +303,12 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
     public float getMidScale() {
         return getMediumScale();
     }
+    
+    @Override
+	public void setMediumScaleEnabled(boolean enabled)
+    {
+    	mMidScaleEnabled = enabled;
+    }
 
     @Override
     public float getMediumScale() {
@@ -335,14 +342,26 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
             float scale = getScale();
             float x = ev.getX();
             float y = ev.getY();
-
-            if (scale < mMidScale) {
-                setScale(mMidScale, x, y, true);
-            } else if (scale >= mMidScale && scale < mMaxScale) {
-                setScale(mMaxScale, x, y, true);
-            } else {
-                setScale(mMinScale, x, y, true);
+            
+            if (mMidScaleEnabled) {
+            	
+            	if (scale < mMidScale) {
+                    setScale(mMidScale, x, y, true);
+                } else if (scale >= mMidScale && scale < mMaxScale) {
+                    setScale(mMaxScale, x, y, true);
+                } else {
+                    setScale(mMinScale, x, y, true);
+                }
             }
+            else {
+            	
+            	if (scale == mMinScale) {
+                    setScale(mMaxScale, x, y, true);
+                } else {
+                    setScale(mMinScale, x, y, true);
+                }
+            }
+            
         } catch (ArrayIndexOutOfBoundsException e) {
             // Can sometimes happen when getX() and getY() is called
         }
@@ -385,6 +404,21 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
                     parent.requestDisallowInterceptTouchEvent(false);
             }
         }
+    }
+    
+    public boolean canScroll(float dx)
+    {
+    	checkMatrixBounds();
+    	
+    	if (mAllowParentInterceptOnEdge && !mScaleDragDetector.isScaling()) {
+            if (mScrollEdge == EDGE_BOTH
+                    || (mScrollEdge == EDGE_LEFT && dx >= 1f)
+                    || (mScrollEdge == EDGE_RIGHT && dx <= -1f)) {
+                return false;
+            }
+        }
+    	
+    	return true;
     }
 
     @Override
@@ -757,10 +791,10 @@ public class PhotoViewAttacher implements IPhotoView, View.OnTouchListener,
                     break;
             }
             mScrollEdge = EDGE_BOTH;
-        } else if (rect.left > 0) {
+        } else if (rect.left >= 0) {
             mScrollEdge = EDGE_LEFT;
             deltaX = -rect.left;
-        } else if (rect.right < viewWidth) {
+        } else if (rect.right <= viewWidth) {
             deltaX = viewWidth - rect.right;
             mScrollEdge = EDGE_RIGHT;
         } else {

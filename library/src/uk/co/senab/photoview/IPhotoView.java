@@ -133,6 +133,8 @@ public interface IPhotoView {
     @Deprecated
     void setMidScale(float midScale);
 
+    
+    void setMediumScaleEnabled(boolean enabled);
     /*
      * Sets the medium scale level. What this value represents depends on the current {@link android.widget.ImageView.ScaleType}.
      */
